@@ -242,7 +242,7 @@ public final class BlockFileRecentPlugin implements BlockProviderPlugin, BlockNo
                 // we have the block so return it
                 try {
                     final BlockFileBlockAccessor accessor = new BlockFileBlockAccessor(
-                            verifiedBlockPath, config.compression(), linksRootPath, blockNumber);
+                            verifiedBlockPath, linksRootPath, blockNumber);
                     blocksReadCounter.increment();
                     return accessor;
                 } catch (final IOException e) {
