@@ -8,8 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.hedera.pbj.runtime.ParseException;
 import com.hedera.pbj.runtime.io.buffer.Bytes;
-import com.swirlds.metrics.api.Metric.ValueType;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -170,10 +168,8 @@ class BackfillPluginTest extends PluginTestBase<BackfillPlugin, ExecutorService,
                 blockMessaging.getSentVerificationNotifications().size(),
                 "Should have sent 0 verification notifications");
 
-        assertEquals(
-                0L, // backfill status should be idle
-                Objects.requireNonNull(blockNodeContext.metrics().getMetric(METRICS_CATEGORY, "backfill_status"))
-                        .get(ValueType.VALUE));
+        // backfill status should be idle
+        assertEquals(0L, getMetricValue(METRICS_CATEGORY + ":backfill_status"), "backfill status should be idle");
     }
 
     @Test
@@ -213,10 +209,8 @@ class BackfillPluginTest extends PluginTestBase<BackfillPlugin, ExecutorService,
                 blockMessaging.getSentVerificationNotifications().size(),
                 "Should have sent 0 verification notifications");
 
-        assertEquals(
-                0L, // backfill status should be idle
-                Objects.requireNonNull(blockNodeContext.metrics().getMetric(METRICS_CATEGORY, "backfill_status"))
-                        .get(ValueType.VALUE));
+        // backfill status should be idle
+        assertEquals(0L, getMetricValue(METRICS_CATEGORY + ":backfill_status"), "backfill status should be idle");
     }
 
     @Test
@@ -448,10 +442,8 @@ class BackfillPluginTest extends PluginTestBase<BackfillPlugin, ExecutorService,
                 blockMessaging.getSentVerificationNotifications().size(),
                 "Should have sent 0 verification notifications");
 
-        assertEquals(
-                0L, // backfill status should be idle
-                Objects.requireNonNull(blockNodeContext.metrics().getMetric(METRICS_CATEGORY, "backfill_status"))
-                        .get(ValueType.VALUE));
+        // backfill status should be idle
+        assertEquals(0L, getMetricValue(METRICS_CATEGORY + ":backfill_status"), "backfill status should be idle");
     }
 
     @Test
@@ -760,8 +752,8 @@ class BackfillPluginTest extends PluginTestBase<BackfillPlugin, ExecutorService,
                 blockMessaging.getSentVerificationNotifications().size(),
                 "Should have sent 0 verification notifications");
 
-        Objects.requireNonNull(blockNodeContext.metrics().getMetric(METRICS_CATEGORY, "backfill_status"))
-                .get(ValueType.VALUE);
+        // backfill status should be idle
+        assertEquals(0L, getMetricValue(METRICS_CATEGORY + ":backfill_status"), "backfill status should be idle");
     }
 
     @Test
