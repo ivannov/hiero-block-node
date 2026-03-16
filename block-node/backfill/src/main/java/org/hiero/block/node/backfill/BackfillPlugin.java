@@ -42,6 +42,23 @@ import org.hiero.metrics.core.MetricRegistry;
  */
 public class BackfillPlugin implements BlockNodePlugin, BlockNotificationHandler {
 
+    public static final MetricKey<ObservableGauge> METRIC_BACKFILL_STATUS =
+            MetricKey.of("backfill_status", ObservableGauge.class).addCategory(METRICS_CATEGORY);
+    public static final MetricKey<ObservableGauge> METRIC_BACKFILL_PENDING_BLOCKS =
+            MetricKey.of("backfill_pending_blocks", ObservableGauge.class).addCategory(METRICS_CATEGORY);
+    public static final MetricKey<ObservableGauge> METRIC_BACKFILL_INFLIGHT_BLOCKS =
+            MetricKey.of("backfill_inflight_blocks", ObservableGauge.class).addCategory(METRICS_CATEGORY);
+    public static final MetricKey<LongCounter> METRIC_BACKFILL_GAPS_DETECTED =
+            MetricKey.of("backfill_gaps_detected", LongCounter.class).addCategory(METRICS_CATEGORY);
+    public static final MetricKey<LongCounter> METRIC_BACKFILL_BLOCKS_FETCHED =
+            MetricKey.of("backfill_blocks_fetched", LongCounter.class).addCategory(METRICS_CATEGORY);
+    public static final MetricKey<LongCounter> METRIC_BACKFILL_BLOCKS_BACKFILLED =
+            MetricKey.of("backfill_blocks_backfilled", LongCounter.class).addCategory(METRICS_CATEGORY);
+    public static final MetricKey<LongCounter> METRIC_BACKFILL_FETCH_ERRORS =
+            MetricKey.of("backfill_fetch_errors", LongCounter.class).addCategory(METRICS_CATEGORY);
+    public static final MetricKey<LongCounter> METRIC_BACKFILL_RETRIES =
+            MetricKey.of("backfill_retries", LongCounter.class).addCategory(METRICS_CATEGORY);
+
     /** The logger for this class. */
     private final System.Logger LOGGER = System.getLogger(getClass().getName());
 
@@ -506,43 +523,35 @@ public class BackfillPlugin implements BlockNodePlugin, BlockNotificationHandler
          */
         public static MetricsHolder createMetrics(
                 @NonNull final MetricRegistry metricRegistry, @NonNull final AtomicLong pendingBackfillBlocks) {
-            metricRegistry.register(ObservableGauge.builder(MetricKey.of("backfill_status", ObservableGauge.class)
-                            .addCategory(METRICS_CATEGORY))
+            metricRegistry.register(ObservableGauge.builder(METRIC_BACKFILL_STATUS)
                     .setDescription("Current status of the backfill process (e.g., idle = 0, running = 1, error = 2).")
                     .observe(() -> determineStatus(pendingBackfillBlocks)));
-            metricRegistry.register(ObservableGauge.builder(MetricKey.of("backfill_pending_blocks", ObservableGauge.class)
-                            .addCategory(METRICS_CATEGORY))
+            metricRegistry.register(ObservableGauge.builder(METRIC_BACKFILL_PENDING_BLOCKS)
                     .setDescription("Current amount of blocks pending to be backfilled.")
                     .observe(() -> Math.max(pendingBackfillBlocks.get(), 0)));
-            metricRegistry.register(ObservableGauge.builder(MetricKey.of("backfill_inflight_blocks", ObservableGauge.class)
-                            .addCategory(METRICS_CATEGORY))
+            metricRegistry.register(ObservableGauge.builder(METRIC_BACKFILL_INFLIGHT_BLOCKS)
                     .setDescription("Current in-flight backfill blocks awaiting verification/persistence.")
                     .observe(() -> Math.max(pendingBackfillBlocks.get(), 0)));
 
             return new MetricsHolder(
                     metricRegistry
-                            .register(LongCounter.builder(MetricKey.of("backfill_gaps_detected", LongCounter.class)
-                                            .addCategory(METRICS_CATEGORY))
+                            .register(LongCounter.builder(METRIC_BACKFILL_GAPS_DETECTED)
                                     .setDescription("Number of gaps detected during the backfill process."))
                             .getOrCreateNotLabeled(),
                     metricRegistry
-                            .register(LongCounter.builder(MetricKey.of("backfill_blocks_fetched", LongCounter.class)
-                                            .addCategory(METRICS_CATEGORY))
+                            .register(LongCounter.builder(METRIC_BACKFILL_BLOCKS_FETCHED)
                                     .setDescription("Number of blocks fetched during the backfill process."))
                             .getOrCreateNotLabeled(),
                     metricRegistry
-                            .register(LongCounter.builder(MetricKey.of("backfill_blocks_backfilled", LongCounter.class)
-                                            .addCategory(METRICS_CATEGORY))
+                            .register(LongCounter.builder(METRIC_BACKFILL_BLOCKS_BACKFILLED)
                                     .setDescription("Number of blocks backfilled during the backfill process."))
                             .getOrCreateNotLabeled(),
                     metricRegistry
-                            .register(LongCounter.builder(MetricKey.of("backfill_fetch_errors", LongCounter.class)
-                                            .addCategory(METRICS_CATEGORY))
+                            .register(LongCounter.builder(METRIC_BACKFILL_FETCH_ERRORS)
                                     .setDescription("Number of errors encountered during the backfill process."))
                             .getOrCreateNotLabeled(),
                     metricRegistry
-                            .register(LongCounter.builder(MetricKey.of("backfill_retries", LongCounter.class)
-                                            .addCategory(METRICS_CATEGORY))
+                            .register(LongCounter.builder(METRIC_BACKFILL_RETRIES)
                                     .setDescription("Number of retries during the backfill process."))
                             .getOrCreateNotLabeled());
         }

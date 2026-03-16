@@ -25,6 +25,13 @@ import org.hiero.metrics.core.MetricRegistry;
  * Plugin that implements the BlockNodeService and provides the 'serverStatus' RPC.
  */
 public class ServerStatusServicePlugin implements BlockNodePlugin, BlockNodeServiceInterface {
+    /** Metric key for the number of server status requests */
+    public static final MetricKey<LongCounter> METRIC_SERVER_STATUS_REQUESTS =
+            MetricKey.of("server_status_requests", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of server status details requests */
+    public static final MetricKey<LongCounter> METRIC_SERVER_STATUS_DETAILS_REQUESTS =
+            MetricKey.of("server_status_details_requests", LongCounter.class).addCategory(METRICS_CATEGORY);
+
     /** The logger for this class. */
     private final System.Logger LOGGER = System.getLogger(getClass().getName());
     /** The block provider */
@@ -122,15 +129,13 @@ public class ServerStatusServicePlugin implements BlockNodePlugin, BlockNodeServ
 
         // Create the metrics for server status
         requestStatusCounter = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("server_status_requests", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_SERVER_STATUS_REQUESTS)
                         .setDescription("Number of server status requests"))
                 .getOrCreateNotLabeled();
 
         // Create the metrics for server status
         requestDetailCounter = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("server_status_details_requests", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_SERVER_STATUS_DETAILS_REQUESTS)
                         .setDescription("Number of server status details requests"))
                 .getOrCreateNotLabeled();
 

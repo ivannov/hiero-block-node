@@ -82,6 +82,31 @@ import org.hiero.metrics.core.MetricRegistry;
  * configured and can be changed at any time. The compression level is also configured and can be changed at any time.
  */
 public final class BlockFileRecentPlugin implements BlockProviderPlugin, BlockNotificationHandler {
+    /** Metric key for the number of blocks written to the recent tier */
+    public static final MetricKey<LongCounter> METRIC_FILES_RECENT_BLOCKS_WRITTEN =
+            MetricKey.of("files_recent_blocks_written", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of blocks read from the recent tier */
+    public static final MetricKey<LongCounter> METRIC_FILES_RECENT_BLOCKS_READ =
+            MetricKey.of("files_recent_blocks_read", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of blocks deleted from the recent tier */
+    public static final MetricKey<LongCounter> METRIC_FILES_RECENT_BLOCKS_DELETED =
+            MetricKey.of("files_recent_blocks_deleted", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of failed block deletions from the recent tier */
+    public static final MetricKey<LongCounter> METRIC_FILES_RECENT_BLOCKS_DELETED_FAILED = MetricKey.of(
+                    "files_recent_blocks_deleted_failed", LongCounter.class)
+            .addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of blocks stored in the recent tier */
+    public static final MetricKey<ObservableGauge> METRIC_FILES_RECENT_BLOCKS_STORED =
+            MetricKey.of("files_recent_blocks_stored", ObservableGauge.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the total bytes stored in the recent tier */
+    public static final MetricKey<ObservableGauge> METRIC_FILES_RECENT_TOTAL_BYTES_STORED = MetricKey.of(
+                    "files_recent_total_bytes_stored", ObservableGauge.class)
+            .addCategory(METRICS_CATEGORY);
+    /** Metric key for the total persistence time latency in nanoseconds */
+    public static final MetricKey<LongCounter> METRIC_FILES_RECENT_PERSISTENCE_TIME_LATENCY_NS = MetricKey.of(
+                    "files_recent_persistence_time_latency_ns", LongCounter.class)
+            .addCategory(METRICS_CATEGORY);
+
     /** The maximum limit of blocks to be deleted in a single retention run. */
     private static final int RETENTION_ROUND_LIMIT = 1_000;
     /**
@@ -190,45 +215,37 @@ public final class BlockFileRecentPlugin implements BlockProviderPlugin, BlockNo
      */
     private void initMetrics(final MetricRegistry metricRegistry) {
         blocksWrittenCounter = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("files_recent_blocks_written", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_FILES_RECENT_BLOCKS_WRITTEN)
                         .setDescription("Blocks written to files.recent provider"))
                 .getOrCreateNotLabeled();
 
         blocksReadCounter = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("files_recent_blocks_read", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_FILES_RECENT_BLOCKS_READ)
                         .setDescription("Blocks read from files.recent provider"))
                 .getOrCreateNotLabeled();
 
         blocksDeletedCounter = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("files_recent_blocks_deleted", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_FILES_RECENT_BLOCKS_DELETED)
                         .setDescription("Blocks deleted from files.recent provider"))
                 .getOrCreateNotLabeled();
 
         blocksDeletedFailedCounter = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("files_recent_blocks_deleted_failed", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_FILES_RECENT_BLOCKS_DELETED_FAILED)
                         .setDescription("Blocks failed deletion from files.recent provider"))
                 .getOrCreateNotLabeled();
 
         metricRegistry
-                .register(ObservableGauge.builder(MetricKey.of("files_recent_blocks_stored", ObservableGauge.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(ObservableGauge.builder(METRIC_FILES_RECENT_BLOCKS_STORED)
                         .setDescription("Blocks stored in files.recent provider"))
                 .observe(availableBlocks::size);
 
         metricRegistry
-                .register(ObservableGauge.builder(MetricKey.of("files_recent_total_bytes_stored", ObservableGauge.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(ObservableGauge.builder(METRIC_FILES_RECENT_TOTAL_BYTES_STORED)
                         .setDescription("Bytes stored in files.recent provider"))
                 .observe(totalBytesStored::get);
 
         persistenceLatencyNs = metricRegistry
-                .register(LongCounter.builder(
-                                MetricKey.of("files_recent_persistence_time_latency_ns", LongCounter.class)
-                                        .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_FILES_RECENT_PERSISTENCE_TIME_LATENCY_NS)
                         .setDescription("Total time spent persisting blocks in files.recent provider in nanoseconds"))
                 .getOrCreateNotLabeled();
     }

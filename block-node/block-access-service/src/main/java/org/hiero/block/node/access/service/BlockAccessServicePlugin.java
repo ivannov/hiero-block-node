@@ -28,6 +28,18 @@ import org.hiero.metrics.core.MetricRegistry;
  * Plugin that implements the BlockAccessService and provides the 'block' RPC.
  */
 public class BlockAccessServicePlugin implements BlockNodePlugin, BlockAccessServiceInterface {
+    /** Metric key for the number of get block requests */
+    public static final MetricKey<LongCounter> METRIC_GET_BLOCK_REQUESTS =
+            MetricKey.of("get_block_requests", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of successful get block requests */
+    public static final MetricKey<LongCounter> METRIC_GET_BLOCK_REQUESTS_SUCCESS =
+            MetricKey.of("get_block_requests_success", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of get block requests where the block was not available */
+    public static final MetricKey<LongCounter> METRIC_GET_BLOCK_REQUESTS_NOT_AVAILABLE =
+            MetricKey.of("get_block_requests_not_available", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of get block requests where the block was not found */
+    public static final MetricKey<LongCounter> METRIC_GET_BLOCK_REQUESTS_NOT_FOUND =
+            MetricKey.of("get_block_requests_not_found", LongCounter.class).addCategory(METRICS_CATEGORY);
 
     /** The logger for this class. */
     private final System.Logger LOGGER = System.getLogger(getClass().getName());
@@ -154,23 +166,18 @@ public class BlockAccessServicePlugin implements BlockNodePlugin, BlockAccessSer
         // Create the metrics
         final MetricRegistry metricRegistry = context.metricRegistry();
         requestCounter = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("get_block_requests", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
-                        .setDescription("Number of get block requests"))
+                .register(LongCounter.builder(METRIC_GET_BLOCK_REQUESTS).setDescription("Number of get block requests"))
                 .getOrCreateNotLabeled();
         responseCounterSuccess = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("get_block_requests_success", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_GET_BLOCK_REQUESTS_SUCCESS)
                         .setDescription("Successful single block requests"))
                 .getOrCreateNotLabeled();
         responseCounterNotAvailable = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("get_block_requests_not_available", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_GET_BLOCK_REQUESTS_NOT_AVAILABLE)
                         .setDescription("Requests for blocks that were not available"))
                 .getOrCreateNotLabeled();
         responseCounterNotFound = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("get_block_requests_not_found", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_GET_BLOCK_REQUESTS_NOT_FOUND)
                         .setDescription("Requests for blocks that were not found"))
                 .getOrCreateNotLabeled();
         // Get the block provider

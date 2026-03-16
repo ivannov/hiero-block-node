@@ -12,6 +12,7 @@ import com.hedera.pbj.grpc.helidon.config.PbjConfig;
 import com.swirlds.config.api.Configuration;
 import com.swirlds.config.api.ConfigurationBuilder;
 import com.swirlds.config.extensions.sources.ClasspathFileConfigSource;
+import com.swirlds.config.extensions.sources.SystemPropertiesConfigSource;
 import io.helidon.webserver.ConnectionConfig;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebServerConfig;
@@ -48,6 +49,15 @@ import org.hiero.metrics.core.MetricRegistry;
 public class BlockNodeApp implements HealthFacility {
     /** Constant mapped to PbjProtocolProvider.CONFIG_NAME in the PBJ Helidon Plugin */
     public static final String PBJ_PROTOCOL_PROVIDER_CONFIG_NAME = "pbj";
+    /** Metric key for the oldest historical block available */
+    public static final MetricKey<ObservableGauge> METRIC_APP_HISTORICAL_OLDEST_BLOCK =
+            MetricKey.of("app_historical_oldest_block", ObservableGauge.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the newest historical block available */
+    public static final MetricKey<ObservableGauge> METRIC_APP_HISTORICAL_NEWEST_BLOCK =
+            MetricKey.of("app_historical_newest_block", ObservableGauge.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the current state status of the app */
+    public static final MetricKey<ObservableGauge> METRIC_APP_STATE_STATUS =
+            MetricKey.of("app_state_status", ObservableGauge.class).addCategory(METRICS_CATEGORY);
     /** The logger for this class. */
     private static final Logger LOGGER = System.getLogger(BlockNodeApp.class.getName());
     /** The state of the server. */
@@ -138,6 +148,7 @@ public class BlockNodeApp implements HealthFacility {
         final ConfigurationBuilder configurationBuilder = ConfigurationBuilder.create()
                 .autoDiscoverExtensions()
                 .withSource(new AutomaticEnvironmentVariableConfigSource(allConfigDataTypes, System::getenv))
+                .withSource(SystemPropertiesConfigSource.getInstance())
                 .withSources(new ClasspathFileConfigSource(Path.of(appProperties)))
                 .withConfigDataTypes(allConfigDataTypes.toArray(new Class[0]));
         // Build the configuration
@@ -215,18 +226,13 @@ public class BlockNodeApp implements HealthFacility {
                 .build();
 
         // Init the app metrics
-        metricRegistry.register(
-                ObservableGauge.builder(MetricKey.of("app_historical_oldest_block", ObservableGauge.class)
-                                .addCategory(METRICS_CATEGORY))
-                        .setDescription("The oldest block the BN has access to")
-                        .observe(() -> historicalBlockFacility.availableBlocks().min()));
-        metricRegistry.register(
-                ObservableGauge.builder(MetricKey.of("app_historical_newest_block", ObservableGauge.class)
-                                .addCategory(METRICS_CATEGORY))
-                        .setDescription("The newest block the BN has")
-                        .observe(() -> historicalBlockFacility.availableBlocks().max()));
-        metricRegistry.register(ObservableGauge.builder(
-                        MetricKey.of("app_state_status", ObservableGauge.class).addCategory(METRICS_CATEGORY))
+        metricRegistry.register(ObservableGauge.builder(METRIC_APP_HISTORICAL_OLDEST_BLOCK)
+                .setDescription("The oldest block the BN has access to")
+                .observe(() -> historicalBlockFacility.availableBlocks().min()));
+        metricRegistry.register(ObservableGauge.builder(METRIC_APP_HISTORICAL_NEWEST_BLOCK)
+                .setDescription("The newest block the BN has")
+                .observe(() -> historicalBlockFacility.availableBlocks().max()));
+        metricRegistry.register(ObservableGauge.builder(METRIC_APP_STATE_STATUS)
                 .setDescription("The current state of the BlockNode App")
                 .observe(() -> state.get().ordinal()));
     }

@@ -57,6 +57,24 @@ import org.hiero.metrics.core.MetricRegistry;
  * most compressed optimal way possible. It is designed to be used with the
  */
 public final class BlockFileHistoricPlugin implements BlockProviderPlugin, BlockNotificationHandler {
+    /** Metric key for the number of blocks written to the historic tier */
+    public static final MetricKey<LongCounter> METRIC_FILES_HISTORIC_BLOCKS_WRITTEN =
+            MetricKey.of("files_historic_blocks_written", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of blocks read from the historic tier */
+    public static final MetricKey<LongCounter> METRIC_FILES_HISTORIC_BLOCKS_READ =
+            MetricKey.of("files_historic_blocks_read", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of failed zip deletions from the historic tier */
+    public static final MetricKey<LongCounter> METRIC_FILES_HISTORIC_ZIPS_DELETED_FAILED = MetricKey.of(
+                    "files_historic_zips_deleted_failed", LongCounter.class)
+            .addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of blocks stored in the historic tier */
+    public static final MetricKey<ObservableGauge> METRIC_FILES_HISTORIC_BLOCKS_STORED =
+            MetricKey.of("files_historic_blocks_stored", ObservableGauge.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the total bytes stored in the historic tier */
+    public static final MetricKey<ObservableGauge> METRIC_FILES_HISTORIC_TOTAL_BYTES_STORED = MetricKey.of(
+                    "files_historic_total_bytes_stored", ObservableGauge.class)
+            .addCategory(METRICS_CATEGORY);
+
     /** A message logged when gaps are encountered while archiving */
     private static final String GAP_FOUND_MESSAGE =
             "Staged block {0} was not found! Cannot proceed to upload archive block batch: {1} - {2}";
@@ -252,31 +270,25 @@ public final class BlockFileHistoricPlugin implements BlockProviderPlugin, Block
      */
     private void initMetrics(MetricRegistry metricRegistry) {
         blocksWrittenCounter = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("files_historic_blocks_written", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_FILES_HISTORIC_BLOCKS_WRITTEN)
                         .setDescription("Blocks written to files.historic provider"))
                 .getOrCreateNotLabeled();
         blocksReadCounter = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("files_historic_blocks_read", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_FILES_HISTORIC_BLOCKS_READ)
                         .setDescription("Blocks read from files.historic provider"))
                 .getOrCreateNotLabeled();
         zipsDeletedFailedCounter = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("files_historic_zips_deleted_failed", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_FILES_HISTORIC_ZIPS_DELETED_FAILED)
                         .setDescription("Zips failed deletion from files.historic provider"))
                 .getOrCreateNotLabeled();
 
         metricRegistry
-                .register(ObservableGauge.builder(MetricKey.of("files_historic_blocks_stored", ObservableGauge.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(ObservableGauge.builder(METRIC_FILES_HISTORIC_BLOCKS_STORED)
                         .setDescription("Blocks stored in files.historic provider"))
                 .observe(availableBlocks::size);
         metricRegistry
-                .register(
-                        ObservableGauge.builder(MetricKey.of("files_historic_total_bytes_stored", ObservableGauge.class)
-                                        .addCategory(METRICS_CATEGORY))
-                                .setDescription("Bytes stored in files.historic provider"))
+                .register(ObservableGauge.builder(METRIC_FILES_HISTORIC_TOTAL_BYTES_STORED)
+                        .setDescription("Bytes stored in files.historic provider"))
                 .observe(totalBytesStored::get);
     }
 

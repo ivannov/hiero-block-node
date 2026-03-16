@@ -27,6 +27,7 @@ import org.hiero.block.node.spi.blockmessaging.BlockNotificationHandler;
 import org.hiero.block.node.spi.health.HealthFacility;
 import org.hiero.block.node.spi.historicalblocks.HistoricalBlockFacility;
 import org.hiero.block.node.spi.module.SemanticVersionUtility;
+import org.hiero.metrics.core.MetricKey;
 import org.hiero.metrics.core.MetricRegistry;
 import org.junit.jupiter.api.AfterEach;
 
@@ -196,6 +197,17 @@ public abstract class PluginTestBase<
     }
 
     /**
+     * Returns the current value of a metric by its MetricKey.
+     *
+     * @param metricKey the MetricKey identifying the metric
+     * @return the current long value of the metric
+     * @throws IllegalArgumentException if no metric with the given name exists in the registry
+     */
+    protected long getMetricValue(@NonNull final MetricKey<?> metricKey) {
+        return testMetricsExporter.getMetricValue(metricKey.name());
+    }
+
+    /**
      * Build a BlockNodeVersions instance to be used for testing
      */
     private BlockNodeVersions buildBlockNodeVersions() {
@@ -206,5 +218,4 @@ public abstract class PluginTestBase<
                 .installedPluginVersions(pluginVersions)
                 .build();
     }
-
 }

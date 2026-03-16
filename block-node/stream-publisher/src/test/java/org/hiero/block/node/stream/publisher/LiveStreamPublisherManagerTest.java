@@ -4,7 +4,6 @@ package org.hiero.block.node.stream.publisher;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
-import static org.hiero.block.node.spi.BlockNodePlugin.METRICS_CATEGORY;
 import static org.hiero.block.node.stream.publisher.fixtures.PublishApiUtility.endThisBlock;
 
 import com.swirlds.config.api.Configuration;
@@ -27,6 +26,7 @@ import org.hiero.block.internal.BlockItemSetUnparsed;
 import org.hiero.block.internal.BlockItemUnparsed;
 import org.hiero.block.internal.BlockUnparsed;
 import org.hiero.block.internal.PublishStreamRequestUnparsed;
+import org.hiero.block.node.app.fixtures.TestMetricsExporter;
 import org.hiero.block.node.app.fixtures.TestUtils;
 import org.hiero.block.node.app.fixtures.async.BlockingExecutor;
 import org.hiero.block.node.app.fixtures.async.ScheduledBlockingExecutor;
@@ -52,7 +52,6 @@ import org.hiero.block.node.spi.threading.ThreadPoolManager;
 import org.hiero.block.node.stream.publisher.LiveStreamPublisherManager.MetricsHolder;
 import org.hiero.block.node.stream.publisher.StreamPublisherManager.ActionForBlock;
 import org.hiero.block.node.stream.publisher.StreamPublisherManager.BlockAction;
-import org.hiero.block.node.app.fixtures.TestMetricsExporter;
 import org.hiero.metrics.core.MetricRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -480,7 +479,7 @@ class LiveStreamPublisherManagerTest {
                 // Busy-wait in short sleeps until the batches metric increases beyond the 'before' baseline.
                 while (System.currentTimeMillis() < deadline) {
                     // If the forwarder has completed at least one batch, the metric will be greater than baseline.
-                    if (getMetricValue("publisher_block_batches_messaged") > before) return;
+                    if (getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_BATCHES_MESSAGED) > before) return;
                     // Sleep briefly to avoid a hot spin while still reacting quickly when the metric changes.
                     Thread.sleep(10L);
                 }
@@ -514,9 +513,10 @@ class LiveStreamPublisherManagerTest {
                 endThisBlock(publisherHandler, blockNumber);
 
                 // Capture the starting value for the async batches counter.
-                final long beforeBatches = getMetricValue("publisher_block_batches_messaged");
+                final long beforeBatches =
+                        getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_BATCHES_MESSAGED);
                 // Capture the starting value for the immediate-close counter.
-                final long beforeClosed = getMetricValue("publisher_blocks_closed_complete");
+                final long beforeClosed = getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE);
 
                 // Sanity check: no messages have been pushed yet before we trigger close.
                 assertThat(messagingFacility.getSentBlockItems()).isEmpty();
@@ -527,7 +527,8 @@ class LiveStreamPublisherManagerTest {
 
                 // Immediate metric should reflect one close; the messaging facility remains empty until the forwarder
                 // runs.
-                assertThat(getMetricValue("publisher_blocks_closed_complete")).isEqualTo(beforeClosed + 1);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE))
+                        .isEqualTo(beforeClosed + 1);
                 assertThat(messagingFacility.getSentBlockItems()).isEmpty();
 
                 // Execute the queued task.
@@ -536,8 +537,10 @@ class LiveStreamPublisherManagerTest {
                 awaitBatchesIncrement(beforeBatches, 3_000L);
 
                 // Post-forwarder: both onNext() and closeBlock() may schedule; expect two batches produced.
-                assertThat(getMetricValue("publisher_blocks_closed_complete")).isEqualTo(beforeBatches + 2);
-                assertThat(getMetricValue("publisher_open_connections")).isEqualTo(beforeBatches + 2);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE))
+                        .isEqualTo(beforeBatches + 2);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_OPEN_CONNECTIONS))
+                        .isEqualTo(beforeBatches + 2);
                 // The in-memory messaging facility should now have reset the block number to -1.
                 assertThat(toTest.getLatestBlockNumber()).isEqualTo(blockNumber - 1);
             }
@@ -547,7 +550,8 @@ class LiveStreamPublisherManagerTest {
             @DisplayName("batches increment only after forwarder completes (gating)")
             void testBatchesIncrementOnlyAfterForwarderCompletes() throws InterruptedException {
                 // Baseline the async batches counter.
-                final long beforeBatches = getMetricValue("publisher_block_batches_messaged");
+                final long beforeBatches =
+                        getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_BATCHES_MESSAGED);
                 // Use a distinct block number for isolation from other tests.
                 final long blockNumber = 0L;
 
@@ -574,8 +578,10 @@ class LiveStreamPublisherManagerTest {
                 awaitBatchesIncrement(beforeBatches, 3_000L);
 
                 // After forwarder completion, batches should have increased and facility should contain messages.
-                assertThat(getMetricValue("publisher_blocks_closed_complete")).isEqualTo(beforeBatches + 2);
-                assertThat(getMetricValue("publisher_open_connections")).isEqualTo(beforeBatches + 2);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE))
+                        .isEqualTo(beforeBatches + 2);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_OPEN_CONNECTIONS))
+                        .isEqualTo(beforeBatches + 2);
                 // The in-memory messaging facility should now have reset the block number to -1.
                 assertThat(toTest.getLatestBlockNumber()).isEqualTo(-1);
             }
@@ -599,18 +605,21 @@ class LiveStreamPublisherManagerTest {
                 // Mark block b0 as ended.
                 endThisBlock(publisherHandler, b0);
                 // Baseline both async batches and immediate close counters.
-                final long beforeBatches = getMetricValue("publisher_block_batches_messaged");
-                final long beforeClosed = getMetricValue("publisher_blocks_closed_complete");
+                final long beforeBatches =
+                        getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_BATCHES_MESSAGED);
+                final long beforeClosed = getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE);
                 // Close the block (immediate metric should +1).
                 toTest.closeBlock(b0);
                 // Verify immediate close counter progressed by exactly one.
-                assertThat(getMetricValue("publisher_blocks_closed_complete")).isEqualTo(beforeClosed + 1);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE))
+                        .isEqualTo(beforeClosed + 1);
                 // Execute the queued tasks; the test pool throws if the queue is empty, enforcing correct sequencing.
                 threadPoolManager.executor().executeAsync(1_000L, false);
                 // Wait until batches surpass baseline.
                 awaitBatchesIncrement(beforeBatches, 3_000L);
                 // After completion, we expect two batches (onNext + closeBlock scheduling).
-                assertThat(getMetricValue("publisher_blocks_closed_complete")).isEqualTo(beforeBatches + 2);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE))
+                        .isEqualTo(beforeBatches + 2);
                 // The in-memory messaging facility should now have reset the block number to -1.
                 assertThat(toTest.getLatestBlockNumber()).isEqualTo(-1);
 
@@ -630,14 +639,16 @@ class LiveStreamPublisherManagerTest {
                 endThisBlock(publisherHandler, b1);
                 // Close the block
                 toTest.closeBlock(b1);
-                assertThat(getMetricValue("publisher_blocks_closed_complete")).isEqualTo(beforeClosed + 3);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE))
+                        .isEqualTo(beforeClosed + 3);
 
                 // Wait until batches surpass the +2 baseline from the first run.
                 awaitBatchesIncrement(beforeBatches + 2, 3_000L);
 
                 // After the second completion, we expect four batches total (two per run).
                 // After completion, we expect two batches (onNext + closeBlock scheduling).
-                assertThat(getMetricValue("publisher_blocks_closed_complete")).isEqualTo(beforeBatches + 4);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE))
+                        .isEqualTo(beforeBatches + 4);
                 // The in-memory messaging facility should now have reset the block number to -1.
                 assertThat(toTest.getLatestBlockNumber()).isEqualTo(-1);
             }
@@ -662,7 +673,8 @@ class LiveStreamPublisherManagerTest {
                 endThisBlock(publisherHandler, blockNumber);
 
                 // Baseline metrics.
-                final long beforeBatches = getMetricValue("publisher_block_batches_messaged");
+                final long beforeBatches =
+                        getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_BATCHES_MESSAGED);
 
                 // Call closeBlock multiple times before draining; implementation should record only one completion
                 // immediately.
@@ -677,7 +689,8 @@ class LiveStreamPublisherManagerTest {
                 assertThat(toTest.getLatestBlockNumber()).isEqualTo(-1);
 
                 // After drain we expect at most one forwarder cycle to have run; verify that something was forwarded.
-                assertThat(getMetricValue("publisher_blocks_closed_complete")).isEqualTo(beforeBatches + 4);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE))
+                        .isEqualTo(beforeBatches + 4);
                 // The in-memory messaging facility should now have reset the block number to -1.
                 assertThat(toTest.getLatestBlockNumber()).isEqualTo(-1);
             }
@@ -941,7 +954,8 @@ class LiveStreamPublisherManagerTest {
                         // below block number in the response is the latest known, -1L because none are stored
                         .returns(-1L, endStreamBlockNumberExtractor);
                 assertThat(responsePipeline.getOnCompleteCalls().get()).isEqualTo(1);
-                assertThat(getMetricValue("publisher_block_endofstream_sent")).isEqualTo(1);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_ENDOFSTREAM_SENT))
+                        .isEqualTo(1);
                 // Assert no other responses sent
                 assertThat(responsePipeline.getOnErrorCalls()).isEmpty();
                 assertThat(responsePipeline.getOnSubscriptionCalls()).isEmpty();
@@ -987,7 +1001,8 @@ class LiveStreamPublisherManagerTest {
                 // Call
                 toTest.handleVerification(notification);
                 // Assert that no shared metrics are updated
-                assertThat(getMetricValue("publisher_blocks_resend_sent")).isEqualTo(0);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_RESEND_SENT))
+                        .isEqualTo(0);
                 // Assert that no responses of any kind have been sent
                 assertThat(responsePipeline.getOnNextCalls()).isEmpty();
                 assertThat(responsePipeline.getOnErrorCalls()).isEmpty();
@@ -1036,7 +1051,8 @@ class LiveStreamPublisherManagerTest {
                 toTest.handleVerification(notification);
                 // Assert that the response pipeline has received no responses and the shared metrics is not updated.
                 assertThat(responsePipeline.getOnNextCalls()).isEmpty();
-                assertThat(getMetricValue("publisher_blocks_resend_sent")).isEqualTo(0);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_RESEND_SENT))
+                        .isEqualTo(0);
                 // Assert no other responses sent
                 assertThat(responsePipeline.getOnErrorCalls()).isEmpty();
                 assertThat(responsePipeline.getOnSubscriptionCalls()).isEmpty();
@@ -1097,7 +1113,8 @@ class LiveStreamPublisherManagerTest {
                 // Assert that the response pipeline of the first publisher has received no responses.
                 // Also no metrics for resends is updated
                 assertThat(responsePipeline.getOnNextCalls()).isEmpty();
-                assertThat(getMetricValue("publisher_blocks_resend_sent")).isEqualTo(0);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_RESEND_SENT))
+                        .isEqualTo(0);
                 // Assert no other responses sent
                 assertThat(responsePipeline.getOnErrorCalls()).isEmpty();
                 assertThat(responsePipeline.getOnSubscriptionCalls()).isEmpty();
@@ -1114,7 +1131,8 @@ class LiveStreamPublisherManagerTest {
                         // below block number in the response is the latest known, -1L because none are stored
                         .returns(-1L, endStreamBlockNumberExtractor);
                 assertThat(responsePipeline2.getOnCompleteCalls().get()).isEqualTo(1);
-                assertThat(getMetricValue("publisher_block_endofstream_sent")).isEqualTo(1);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_ENDOFSTREAM_SENT))
+                        .isEqualTo(1);
                 // Assert no other responses sent
                 assertThat(responsePipeline2.getOnErrorCalls()).isEmpty();
                 assertThat(responsePipeline2.getOnSubscriptionCalls()).isEmpty();
@@ -1175,7 +1193,7 @@ class LiveStreamPublisherManagerTest {
                         .first()
                         .returns(ResponseOneOfType.ACKNOWLEDGEMENT, responseKindExtractor)
                         .returns(expectedLatestBlockNumber, acknowledgementBlockNumberExtractor);
-                assertThat(getMetricValue("publisher_latest_block_number_acknowledged"))
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_LATEST_BLOCK_NUMBER_ACKNOWLEDGED))
                         .isEqualTo(expectedLatestBlockNumber);
                 // Assert no other responses sent
                 assertThat(responsePipeline.getOnErrorCalls()).isEmpty();
@@ -1199,7 +1217,7 @@ class LiveStreamPublisherManagerTest {
                         new PersistedNotification(10L, true, 0, BlockSource.PUBLISHER);
                 // Call
                 toTest.handlePersisted(notification);
-                assertThat(getMetricValue("publisher_latest_block_number_acknowledged"))
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_LATEST_BLOCK_NUMBER_ACKNOWLEDGED))
                         .isEqualTo(expectedLatestBlockNumber);
                 // Assert that the latest known block number is now set to the notification's end block number.
                 assertThat(toTest.getLatestBlockNumber()).isEqualTo(expectedLatestBlockNumber);
@@ -1303,7 +1321,8 @@ class LiveStreamPublisherManagerTest {
                         .build();
                 // Now we send the end stream request to the publisher handler.
                 publisherHandler.onNext(endStreamRequest);
-                assertThat(getMetricValue("publisher_block_endstream_received")).isEqualTo(1);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_ENDSTREAM_RECEIVED))
+                        .isEqualTo(1);
                 // Now we must assert that the publisher has shutdown
                 assertThat(responsePipeline.getOnCompleteCalls().get()).isEqualTo(1);
                 // Assert no other responses sent
@@ -1321,7 +1340,8 @@ class LiveStreamPublisherManagerTest {
                         .first()
                         .returns(ResponseOneOfType.SKIP_BLOCK, responseKindExtractor)
                         .returns(block.number(), skipBlockNumberExtractor);
-                assertThat(getMetricValue("publisher_blocks_skips_sent")).isEqualTo(1);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_SKIPS_SENT))
+                        .isEqualTo(1);
                 // Assert no other responses sent
                 assertThat(responsePipeline2.getOnErrorCalls()).isEmpty();
                 assertThat(responsePipeline2.getOnSubscriptionCalls()).isEmpty();
@@ -1371,7 +1391,8 @@ class LiveStreamPublisherManagerTest {
                 publisherHandler.onNext(endStreamRequest);
                 // Now we must assert that the publisher has shutdown
                 assertThat(responsePipeline.getOnCompleteCalls().get()).isEqualTo(1);
-                assertThat(getMetricValue("publisher_block_endstream_received")).isEqualTo(1);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_ENDSTREAM_RECEIVED))
+                        .isEqualTo(1);
                 // Assert no other responses sent
                 assertThat(responsePipeline.getOnNextCalls()).isEmpty();
                 assertThat(responsePipeline.getOnErrorCalls()).isEmpty();
@@ -1633,11 +1654,13 @@ class LiveStreamPublisherManagerTest {
             @DisplayName("addHandler() updates the current active publishers count metric")
             void testAddHandlerUpdatesActivePublishersMetric() {
                 // Make a pre-check that the active publishers metric is zero.
-                assertThat(getMetricValue("publisher_open_connections")).isZero();
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_OPEN_CONNECTIONS))
+                        .isZero();
                 // Add a new handler.
                 toTest.addHandler(responsePipeline, sharedHandlerMetrics);
                 // Assert that the active publishers metric is now 1.
-                assertThat(getMetricValue("publisher_open_connections")).isEqualTo(1);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_OPEN_CONNECTIONS))
+                        .isEqualTo(1);
             }
         }
 
@@ -1685,15 +1708,18 @@ class LiveStreamPublisherManagerTest {
             @DisplayName("removeHandler() updates the current active publishers count metric")
             void testRemoveHandlerUpdatesActivePublishersMetric() {
                 // Make a pre-check that the active publishers metric is 2 from original setup.
-                assertThat(getMetricValue("publisher_open_connections")).isEqualTo(2);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_OPEN_CONNECTIONS))
+                        .isEqualTo(2);
                 // Remove one handler.
                 toTest.removeHandler(publisherHandlerId);
                 // Assert that the active publishers metric is now 1.
-                assertThat(getMetricValue("publisher_open_connections")).isEqualTo(1);
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_OPEN_CONNECTIONS))
+                        .isEqualTo(1);
                 // Remove the second handler.
                 toTest.removeHandler(publisherHandlerId2);
                 // Assert that the active publishers metric is now 0.
-                assertThat(getMetricValue("publisher_open_connections")).isZero();
+                assertThat(getMetricValue(StreamPublisherPlugin.METRIC_PUBLISHER_OPEN_CONNECTIONS))
+                        .isZero();
             }
         }
 
@@ -1824,7 +1850,7 @@ class LiveStreamPublisherManagerTest {
         return PublisherHandler.MetricsHolder.createMetrics(TestUtils.createMetrics());
     }
 
-    private long getMetricValue(String metricName) {
-        return metricsExporter.getMetricValue(METRICS_CATEGORY + ":" + metricName);
+    private long getMetricValue(org.hiero.metrics.core.MetricKey<?> metricKey) {
+        return metricsExporter.getMetricValue(metricKey.name());
     }
 }

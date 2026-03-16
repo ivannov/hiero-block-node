@@ -2,12 +2,12 @@
 package org.hiero.block.node.backfill;
 
 import static java.util.concurrent.locks.LockSupport.parkNanos;
-import static org.hiero.block.node.spi.BlockNodePlugin.METRICS_CATEGORY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.hedera.pbj.runtime.ParseException;
 import com.hedera.pbj.runtime.io.buffer.Bytes;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -169,7 +169,7 @@ class BackfillPluginTest extends PluginTestBase<BackfillPlugin, ExecutorService,
                 "Should have sent 0 verification notifications");
 
         // backfill status should be idle
-        assertEquals(0L, getMetricValue(METRICS_CATEGORY + ":backfill_status"), "backfill status should be idle");
+        assertEquals(0L, getMetricValue(BackfillPlugin.METRIC_BACKFILL_STATUS), "backfill status should be idle");
     }
 
     @Test
@@ -210,7 +210,7 @@ class BackfillPluginTest extends PluginTestBase<BackfillPlugin, ExecutorService,
                 "Should have sent 0 verification notifications");
 
         // backfill status should be idle
-        assertEquals(0L, getMetricValue(METRICS_CATEGORY + ":backfill_status"), "backfill status should be idle");
+        assertEquals(0L, getMetricValue(BackfillPlugin.METRIC_BACKFILL_STATUS), "backfill status should be idle");
     }
 
     @Test
@@ -443,7 +443,7 @@ class BackfillPluginTest extends PluginTestBase<BackfillPlugin, ExecutorService,
                 "Should have sent 0 verification notifications");
 
         // backfill status should be idle
-        assertEquals(0L, getMetricValue(METRICS_CATEGORY + ":backfill_status"), "backfill status should be idle");
+        assertEquals(0L, getMetricValue(BackfillPlugin.METRIC_BACKFILL_STATUS), "backfill status should be idle");
     }
 
     @Test
@@ -753,7 +753,7 @@ class BackfillPluginTest extends PluginTestBase<BackfillPlugin, ExecutorService,
                 "Should have sent 0 verification notifications");
 
         // backfill status should be idle
-        assertEquals(0L, getMetricValue(METRICS_CATEGORY + ":backfill_status"), "backfill status should be idle");
+        assertEquals(0L, getMetricValue(BackfillPlugin.METRIC_BACKFILL_STATUS), "backfill status should be idle");
     }
 
     @Test

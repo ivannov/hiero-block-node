@@ -5,8 +5,18 @@ import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.TRACE;
 import static java.lang.System.Logger.Level.WARNING;
-import static org.hiero.block.node.spi.BlockNodePlugin.METRICS_CATEGORY;
 import static org.hiero.block.node.spi.BlockNodePlugin.UNKNOWN_BLOCK_NUMBER;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_ACK_SENT;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_RESEND_SENT;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_SKIPS_SENT;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_ENDOFSTREAM_SENT;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_ENDSTREAM_RECEIVED;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_ITEMS_RECEIVED;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_NODE_BEHIND_SENT;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_SEND_RESPONSE_FAILED;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_RECEIVE_LATENCY_NS;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_STREAM_ERRORS;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_STREAM_SETS_DROPPED;
 
 import com.hedera.hapi.block.stream.output.BlockHeader;
 import com.hedera.pbj.runtime.ParseException;
@@ -41,7 +51,6 @@ import org.hiero.block.node.spi.BlockNodePlugin;
 import org.hiero.block.node.stream.publisher.StreamPublisherManager.ActionForBlock;
 import org.hiero.block.node.stream.publisher.StreamPublisherManager.BlockAction;
 import org.hiero.metrics.LongCounter;
-import org.hiero.metrics.core.MetricKey;
 import org.hiero.metrics.core.MetricRegistry;
 
 /// A handler for processing publish stream requests.
@@ -387,33 +396,6 @@ public final class PublisherHandler implements Pipeline<PublishStreamRequestUnpa
 
     private void handleEndOfBlock(final BlockEnd endOfBlock) {
         final long endOfBlockNumber = endOfBlock.blockNumber();
-        final long expectedBlockNumber = currentStreamingBlockNumber.get();
-        if (endOfBlockNumber != expectedBlockNumber) {
-            final String message = "Expected to close block {0}, but received close for block {1}.";
-            LOGGER.log(INFO, message, expectedBlockNumber, endOfBlockNumber);
-            // @todo(2200) should we take another action as part of the additional handling of the end of block message?
-        }
-        metrics.receiveBlockTimeLatencyNs.increment(System.nanoTime() - currentStreamingBlockHeaderReceivedTime);
-        final ActionForBlock actionForBlock = publisherManager.endOfBlock(endOfBlockNumber);
-        publisherManager.closeBlock(handlerId);
-        unacknowledgedStreamedBlocks.add(endOfBlockNumber);
-        final BatchHandleResult result =
-                switch (actionForBlock.action()) {
-                    // If we get ACCEPT, we must simply reset the state and continue
-                    case ACCEPT -> {
-                        if (endOfBlockNumber == actionForBlock.blockNumber()) {
-                            yield new BatchHandleResult(false, true);
-                        } else {
-                            yield unexpectedActionForEndOfBlock(actionForBlock, endOfBlockNumber);
-                        }
-                    }
-                    // If we get a resend, we must handle it
-                    case RESEND -> handleResend(actionForBlock.blockNumber());
-                    // These cases are not expected to be returned
-                    case SKIP, SEND_BEHIND, END_DUPLICATE, END_ERROR ->
-                        unexpectedActionForEndOfBlock(actionForBlock, endOfBlockNumber);
-                };
-        handleBlockActionResult(result);
         final long currentStreamingNumber = currentStreamingBlockNumber.get();
         if (currentStreamingNumber <= UNKNOWN_BLOCK_NUMBER) {
             final String message =
@@ -424,7 +406,7 @@ public final class PublisherHandler implements Pipeline<PublishStreamRequestUnpa
                 final String message = "Handler {0} is expected to end block {1}, but received end for block {2}.";
                 LOGGER.log(INFO, message, handlerId, currentStreamingNumber, endOfBlockNumber);
             }
-            metrics.receiveBlockTimeLatencyNs.add(System.nanoTime() - currentStreamingBlockHeaderReceivedTime);
+            metrics.receiveBlockTimeLatencyNs.increment(System.nanoTime() - currentStreamingBlockHeaderReceivedTime);
             final ActionForBlock actionForBlock = publisherManager.endOfBlock(currentStreamingNumber);
             publisherManager.closeBlock(handlerId);
             unacknowledgedStreamedBlocks.add(currentStreamingNumber);
@@ -803,60 +785,48 @@ public final class PublisherHandler implements Pipeline<PublishStreamRequestUnpa
         /// @return a new, valid, fully initialized [MetricsHolder] instance
         static MetricsHolder createMetrics(@NonNull final MetricRegistry metricRegistry) {
             final LongCounter.Measurement liveBlockItemsReceived = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_block_items_received", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_BLOCK_ITEMS_RECEIVED)
                             .setDescription("Live block items received"))
                     .getOrCreateNotLabeled();
             final LongCounter.Measurement blockAcknowledgementsSent = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_blocks_ack_sent", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_BLOCKS_ACK_SENT)
                             .setDescription("Block‑ack messages sent"))
                     .getOrCreateNotLabeled();
             final LongCounter.Measurement blockItemSetsDropped = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_stream_sets_dropped", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_STREAM_SETS_DROPPED)
                             .setDescription("Publisher block item sets dropped because the block is missing a header."))
                     .getOrCreateNotLabeled();
             final LongCounter.Measurement streamErrors = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_stream_errors", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_STREAM_ERRORS)
                             .setDescription("Publisher connection streams that end in an error"))
                     .getOrCreateNotLabeled();
             final LongCounter.Measurement blockSkipsSent = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_blocks_skips_sent", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_BLOCKS_SKIPS_SENT)
                             .setDescription("Block‑ack skips sent"))
                     .getOrCreateNotLabeled();
             final LongCounter.Measurement blockResendsSent = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_blocks_resend_sent", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_BLOCKS_RESEND_SENT)
                             .setDescription("Block Resend messages sent"))
                     .getOrCreateNotLabeled();
             final LongCounter.Measurement nodeBehindSent = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_block_node_behind_sent", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_BLOCK_NODE_BEHIND_SENT)
                             .setDescription("Node Behind Publisher messages sent"))
                     .getOrCreateNotLabeled();
             final LongCounter.Measurement endOfStreamsSent = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_block_endofstream_sent", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_BLOCK_ENDOFSTREAM_SENT)
                             .setDescription("Block End-of-Stream messages sent"))
                     .getOrCreateNotLabeled();
             final LongCounter.Measurement sendResponseFailed = metricRegistry
-                    .register(
-                            LongCounter.builder(MetricKey.of("publisher_block_send_response_failed", LongCounter.class)
-                                            .addCategory(METRICS_CATEGORY))
-                                    .setDescription("Count of failures to send responses to a publisher"))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_BLOCK_SEND_RESPONSE_FAILED)
+                            .setDescription("Count of failures to send responses to a publisher"))
                     .getOrCreateNotLabeled();
             final LongCounter.Measurement endStreamsReceived = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_block_endstream_received", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_BLOCK_ENDSTREAM_RECEIVED)
                             .setDescription("Block End-Stream messages received"))
                     .getOrCreateNotLabeled();
             final LongCounter.Measurement receiveBlockTimeLatencyNs = metricRegistry
                     .register(
-                            LongCounter.builder(MetricKey.of("publisher_receive_latency_ns", LongCounter.class)
-                                            .addCategory(METRICS_CATEGORY))
+                            LongCounter.builder(METRIC_PUBLISHER_RECEIVE_LATENCY_NS)
                                     .setDescription(
                                             "Latency in nanoseconds between block being sent by publisher and being fully streamed from block header to block proof, also known as of network in-transit time latency"))
                     .getOrCreateNotLabeled();

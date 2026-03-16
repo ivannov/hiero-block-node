@@ -4,8 +4,14 @@ package org.hiero.block.node.stream.publisher;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.TRACE;
-import static org.hiero.block.node.spi.BlockNodePlugin.METRICS_CATEGORY;
 import static org.hiero.block.node.spi.BlockNodePlugin.UNKNOWN_BLOCK_NUMBER;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_BATCHES_MESSAGED;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_BLOCK_ITEMS_MESSAGED;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_HIGHEST_BLOCK_NUMBER_INBOUND;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_LATEST_BLOCK_NUMBER_ACKNOWLEDGED;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_LOWEST_BLOCK_NUMBER_INBOUND;
+import static org.hiero.block.node.stream.publisher.StreamPublisherPlugin.METRIC_PUBLISHER_OPEN_CONNECTIONS;
 
 import com.hedera.pbj.runtime.grpc.Pipeline;
 import edu.umd.cs.findbugs.annotations.NonNull;
@@ -47,7 +53,6 @@ import org.hiero.block.node.spi.blockmessaging.VerificationNotification;
 import org.hiero.block.node.spi.threading.ThreadPoolManager;
 import org.hiero.metrics.LongCounter;
 import org.hiero.metrics.LongGauge;
-import org.hiero.metrics.core.MetricKey;
 import org.hiero.metrics.core.MetricRegistry;
 
 /// todo(1420) add documentation
@@ -805,39 +810,31 @@ public final class LiveStreamPublisherManager implements StreamPublisherManager 
         /// todo(1420) add documentation
         static MetricsHolder createMetrics(@NonNull final MetricRegistry metricRegistry) {
             final LongCounter.Measurement blockItemsMessaged = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_block_items_messaged", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_BLOCK_ITEMS_MESSAGED)
                             .setDescription("Live block items messaged to the messaging service"))
                     .getOrCreateLabeled();
             final LongCounter.Measurement blockBatchesMessaged = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_block_batches_messaged", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_BLOCK_BATCHES_MESSAGED)
                             .setDescription("Live block batches processed and sent to the messaging service"))
                     .getOrCreateLabeled();
             final LongCounter.Measurement blocksClosedComplete = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("publisher_blocks_closed_complete", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_PUBLISHER_BLOCKS_CLOSED_COMPLETE)
                             .setDescription("Blocks received complete (with both header and proof) by any Handler"))
                     .getOrCreateLabeled();
             final LongGauge.Measurement numberOfProducers = metricRegistry
-                    .register(LongGauge.builder(MetricKey.of("publisher_open_connections", LongGauge.class)
-                                    .addCategory(METRICS_CATEGORY))
-                            .setDescription("Connected publishers"))
+                    .register(
+                            LongGauge.builder(METRIC_PUBLISHER_OPEN_CONNECTIONS).setDescription("Connected publishers"))
                     .getOrCreateNotLabeled();
             final LongGauge.Measurement lowestBlockNumber = metricRegistry
-                    .register(LongGauge.builder(MetricKey.of("publisher_lowest_block_number_inbound", LongGauge.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongGauge.builder(METRIC_PUBLISHER_LOWEST_BLOCK_NUMBER_INBOUND)
                             .setDescription("Oldest inbound block number"))
                     .getOrCreateNotLabeled();
             final LongGauge.Measurement highestBlockNumber = metricRegistry
-                    .register(LongGauge.builder(MetricKey.of("publisher_highest_block_number_inbound", LongGauge.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongGauge.builder(METRIC_PUBLISHER_HIGHEST_BLOCK_NUMBER_INBOUND)
                             .setDescription("Newest inbound block number"))
                     .getOrCreateNotLabeled();
             final LongGauge.Measurement latestBlockNumberAcknowledged = metricRegistry
-                    .register(LongGauge.builder(
-                                    MetricKey.of("publisher_latest_block_number_acknowledged", LongGauge.class)
-                                            .addCategory(METRICS_CATEGORY))
+                    .register(LongGauge.builder(METRIC_PUBLISHER_LATEST_BLOCK_NUMBER_ACKNOWLEDGED)
                             .setDescription("Latest block number acknowledged"))
                     .getOrCreateNotLabeled();
             return new MetricsHolder(

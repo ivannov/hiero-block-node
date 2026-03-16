@@ -37,6 +37,25 @@ import org.hiero.metrics.core.MetricKey;
 /** Provides implementation for the health endpoints of the server. */
 @SuppressWarnings("unused")
 public class VerificationServicePlugin implements BlockNodePlugin, BlockItemHandler, BlockNotificationHandler {
+    /** Metric key for the number of blocks received for verification */
+    public static final MetricKey<LongCounter> METRIC_VERIFICATION_BLOCKS_RECEIVED =
+            MetricKey.of("verification_blocks_received", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of blocks that passed verification */
+    public static final MetricKey<LongCounter> METRIC_VERIFICATION_BLOCKS_VERIFIED =
+            MetricKey.of("verification_blocks_verified", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of blocks that failed verification */
+    public static final MetricKey<LongCounter> METRIC_VERIFICATION_BLOCKS_FAILED =
+            MetricKey.of("verification_blocks_failed", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of internal errors during verification */
+    public static final MetricKey<LongCounter> METRIC_VERIFICATION_BLOCKS_ERROR =
+            MetricKey.of("verification_blocks_error", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for block verification time */
+    public static final MetricKey<LongCounter> METRIC_VERIFICATION_BLOCK_TIME =
+            MetricKey.of("verification_block_time", LongCounter.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for block hashing time */
+    public static final MetricKey<LongCounter> METRIC_HASHING_BLOCK_TIME =
+            MetricKey.of("hashing_block_time", LongCounter.class).addCategory(METRICS_CATEGORY);
+
     private static final String COMPLETED_MESSAGE = "Verified backfill block items for block={0} with success={1}";
     /** The logger for this class. */
     private final System.Logger LOGGER = System.getLogger(getClass().getName());
@@ -95,34 +114,27 @@ public class VerificationServicePlugin implements BlockNodePlugin, BlockItemHand
     private void initMetrics(BlockNodeContext context) {
         final var metricRegistry = context.metricRegistry();
         verificationBlocksReceived = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("verification_blocks_received", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_VERIFICATION_BLOCKS_RECEIVED)
                         .setDescription("Blocks received for verification"))
                 .getOrCreateNotLabeled();
         verificationBlocksVerified = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("verification_blocks_verified", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_VERIFICATION_BLOCKS_VERIFIED)
                         .setDescription("Blocks that passed verification"))
                 .getOrCreateNotLabeled();
         verificationBlocksFailed = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("verification_blocks_failed", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_VERIFICATION_BLOCKS_FAILED)
                         .setDescription("Blocks that failed verification"))
                 .getOrCreateNotLabeled();
         verificationBlocksError = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("verification_blocks_error", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_VERIFICATION_BLOCKS_ERROR)
                         .setDescription("Internal errors during verification"))
                 .getOrCreateNotLabeled();
         verificationBlockTime = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("verification_block_time", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
+                .register(LongCounter.builder(METRIC_VERIFICATION_BLOCK_TIME)
                         .setDescription("Verification time per block (ms)"))
                 .getOrCreateNotLabeled();
         hashingBlockTimeNs = metricRegistry
-                .register(LongCounter.builder(MetricKey.of("hashing_block_time", LongCounter.class)
-                                .addCategory(METRICS_CATEGORY))
-                        .setDescription("Hashing time per block (ms)"))
+                .register(LongCounter.builder(METRIC_HASHING_BLOCK_TIME).setDescription("Hashing time per block (ms)"))
                 .getOrCreateNotLabeled();
     }
 

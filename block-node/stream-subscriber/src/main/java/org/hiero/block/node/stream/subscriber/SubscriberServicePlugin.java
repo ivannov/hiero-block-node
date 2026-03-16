@@ -46,6 +46,13 @@ import org.hiero.metrics.core.MetricRegistry;
  * the lifecycle of subscriber connections.
  */
 public class SubscriberServicePlugin implements BlockNodePlugin, BlockStreamSubscribeServiceInterface {
+    /** Metric key for the number of open subscriber connections */
+    public static final MetricKey<LongGauge> METRIC_SUBSCRIBER_OPEN_CONNECTIONS =
+            MetricKey.of("subscriber_open_connections", LongGauge.class).addCategory(METRICS_CATEGORY);
+    /** Metric key for the number of subscriber errors */
+    public static final MetricKey<LongCounter> METRIC_SUBSCRIBER_ERRORS =
+            MetricKey.of("subscriber_errors", LongCounter.class).addCategory(METRICS_CATEGORY);
+
     /** The logger for this class. */
     private final Logger LOGGER = System.getLogger(getClass().getName());
     /** The block node context, used to provide access to facilities */
@@ -157,13 +164,11 @@ public class SubscriberServicePlugin implements BlockNodePlugin, BlockStreamSubs
             // create the metrics
             final MetricRegistry metricRegistry = context.metricRegistry();
             numberOfSubscribers = metricRegistry
-                    .register(LongGauge.builder(MetricKey.of("subscriber_open_connections", LongGauge.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongGauge.builder(METRIC_SUBSCRIBER_OPEN_CONNECTIONS)
                             .setDescription("Connected subscribers"))
                     .getOrCreateNotLabeled();
             subscriberErrorsCounter = metricRegistry
-                    .register(LongCounter.builder(MetricKey.of("subscriber_errors", LongCounter.class)
-                                    .addCategory(METRICS_CATEGORY))
+                    .register(LongCounter.builder(METRIC_SUBSCRIBER_ERRORS)
                             .setDescription("Errors while streaming to subscribers"))
                     .getOrCreateNotLabeled();
         }
