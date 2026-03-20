@@ -16,4 +16,7 @@ testModuleInfo {
     requires("org.junit.jupiter.api")
     requires("org.assertj.core")
     requires("org.hiero.block.node.app.test.fixtures")
+    runtimeOnly("org.junit.jupiter.params")
+    runtimeOnly("org.mockito")
+    runtimeOnly("org.mockito.junit.jupiter")
 }
